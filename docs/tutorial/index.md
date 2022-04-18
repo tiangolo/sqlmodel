@@ -64,7 +64,7 @@ $ cd sqlmodel-tutorial
 
 Make sure you have an officially supported version of Python.
 
-Currently it is **Python 3.6** and above (Python 3.5 was already deprecated).
+Currently it is **Python 3.7** and above (Python 3.6 was already deprecated).
 
 You can check which version you have with:
 
@@ -72,7 +72,7 @@ You can check which version you have with:
 
 ```console
 $ python3 --version
-Python 3.6.9
+Python 3.7.1
 ```
 
 </div>
@@ -85,7 +85,6 @@ You might want to try with the specific versions, for example with:
 * `python3.9`
 * `python3.8`
 * `python3.7`
-* `python3.6`
 
 The code would look like this:
 
@@ -95,7 +94,7 @@ The code would look like this:
 // Let's check with just python3
 $ python3 --version
 // This is too old! 😱
-Python 3.5.6
+Python 3.6.9
 // Let's see if python3.10 is available
 $ python3.10 --version
 // Oh, no, this one is not available 😔
