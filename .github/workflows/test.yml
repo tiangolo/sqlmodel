@@ -25,6 +25,7 @@ jobs:
           - "3.8"
           - "3.9"
           - "3.10"
+          - "3.11"
       fail-fast: false
 
     steps:
@@ -70,6 +71,7 @@ jobs:
         with:
           name: coverage
           path: coverage
+
   coverage-combine:
     needs:
       - test
