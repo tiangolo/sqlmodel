@@ -48,7 +48,7 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: "3.11"
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         id: cache
         with:
           path: ${{ env.pythonLocation }}
@@ -67,7 +67,7 @@ jobs:
       - name: Install Material for MkDocs Insiders
         if: ( github.event_name != 'pull_request' || github.secret_source == 'Actions' ) && steps.cache.outputs.cache-hit != 'true'
         run: python -m poetry run pip install git+https://${{ secrets.SQLMODEL_MKDOCS_MATERIAL_INSIDERS }}@github.com/squidfunk/mkdocs-material-insiders.git
-      - uses: actions/cache@v3
+      - uses: actions/cache@v4
         with:
           key: mkdocs-cards-${{ github.ref }}
           path: .cache
