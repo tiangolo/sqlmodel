@@ -39,7 +39,9 @@ from sqlalchemy import (
     inspect,
 )
 from sqlalchemy import Enum as sa_Enum
+from sqlalchemy.ext.hybrid import hybrid_property
 from sqlalchemy.orm import (
+    ColumnProperty,
     Mapped,
     RelationshipProperty,
     declared_attr,
@@ -83,6 +85,7 @@ from .sql.sqltypes import GUID, AutoString
 _T = TypeVar("_T")
 NoArgAnyCallable = Callable[[], Any]
 IncEx = Union[Set[int], Set[str], Dict[int, Any], Dict[str, Any], None]
+SQLAlchemyConstruct = Union[hybrid_property, ColumnProperty, declared_attr]
 
 
 def __dataclass_transform__(
@@ -388,6 +391,7 @@ def Relationship(
 @__dataclass_transform__(kw_only_default=True, field_descriptors=(Field, FieldInfo))
 class SQLModelMetaclass(ModelMetaclass, DeclarativeMeta):
     __sqlmodel_relationships__: Dict[str, RelationshipInfo]
+    __sqlalchemy_constructs__: Dict[str, SQLAlchemyConstruct]
     model_config: SQLModelConfig
     model_fields: Dict[str, FieldInfo]
     __config__: Type[SQLModelConfig]
@@ -415,6 +419,7 @@ class SQLModelMetaclass(ModelMetaclass, DeclarativeMeta):
         **kwargs: Any,
     ) -> Any:
         relationships: Dict[str, RelationshipInfo] = {}
+        sqlalchemy_constructs: Dict[str, SQLAlchemyConstruct] = {}
         dict_for_pydantic = {}
         original_annotations = get_annotations(class_dict)
         pydantic_annotations = {}
@@ -422,6 +427,8 @@ class SQLModelMetaclass(ModelMetaclass, DeclarativeMeta):
         for k, v in class_dict.items():
             if isinstance(v, RelationshipInfo):
                 relationships[k] = v
+            elif isinstance(v, (hybrid_property, ColumnProperty, declared_attr)):
+                sqlalchemy_constructs[k] = v
             else:
                 dict_for_pydantic[k] = v
         for k, v in original_annotations.items():
@@ -434,6 +441,7 @@ class SQLModelMetaclass(ModelMetaclass, DeclarativeMeta):
             "__weakref__": None,
             "__sqlmodel_relationships__": relationships,
             "__annotations__": pydantic_annotations,
+            "__sqlalchemy_constructs__": sqlalchemy_constructs,
         }
         # Duplicate logic from Pydantic to filter config kwargs because if they are
         # passed directly including the registry Pydantic will pass them over to the
@@ -455,6 +463,11 @@ class SQLModelMetaclass(ModelMetaclass, DeclarativeMeta):
             **new_cls.__annotations__,
         }
 
+        # We did not provide the sqlalchemy constructs to Pydantic's new function above
+        # so that they wouldn't be modified. Instead we set them directly to the class below:
+        for k, v in sqlalchemy_constructs.items():
+            setattr(new_cls, k, v)
+
         def get_config(name: str) -> Any:
             config_class_value = get_config_value(
                 model=new_cls, parameter=name, default=Undefined
@@ -471,6 +484,8 @@ class SQLModelMetaclass(ModelMetaclass, DeclarativeMeta):
             # If it was passed by kwargs, ensure it's also set in config
             set_config_value(model=new_cls, parameter="table", value=config_table)
             for k, v in get_model_fields(new_cls).items():
+                if k in sqlalchemy_constructs:
+                    continue
                 col = get_column_from_field(v)
                 setattr(new_cls, k, col)
             # Set a config flag to tell FastAPI that this should be read with a field
@@ -493,6 +508,9 @@ class SQLModelMetaclass(ModelMetaclass, DeclarativeMeta):
             setattr(new_cls, "_sa_registry", config_registry)  # noqa: B010
             setattr(new_cls, "metadata", config_registry.metadata)  # noqa: B010
             setattr(new_cls, "__abstract__", True)  # noqa: B010
+            setattr(new_cls, "__pydantic_private__", {})  # noqa: B010
+            setattr(new_cls, "__pydantic_extra__", {})  # noqa: B010
+
         return new_cls
 
     # Override SQLAlchemy, allow both SQLAlchemy and plain Pydantic models
@@ -506,6 +524,9 @@ class SQLModelMetaclass(ModelMetaclass, DeclarativeMeta):
         base_is_table = any(is_table_model_class(base) for base in bases)
         if is_table_model_class(cls) and not base_is_table:
             for rel_name, rel_info in cls.__sqlmodel_relationships__.items():
+                if rel_name in cls.__sqlalchemy_constructs__:
+                    # Skip hybrid properties
+                    continue
                 if rel_info.sa_relationship:
                     # There's a SQLAlchemy relationship declared, that takes precedence
                     # over anything else, use that and continue with the next attribute
