@@ -114,6 +114,8 @@ class FieldInfo(PydanticFieldInfo):
         sa_column = kwargs.pop("sa_column", Undefined)
         sa_column_args = kwargs.pop("sa_column_args", Undefined)
         sa_column_kwargs = kwargs.pop("sa_column_kwargs", Undefined)
+        sa_foreign_key_args = kwargs.pop("sa_foreign_key_args", Undefined)
+        sa_foreign_key_kwargs = kwargs.pop("sa_foreign_key_kwargs", Undefined)
         if sa_column is not Undefined:
             if sa_column_args is not Undefined:
                 raise RuntimeError(
@@ -161,6 +163,8 @@ class FieldInfo(PydanticFieldInfo):
         self.sa_column = sa_column
         self.sa_column_args = sa_column_args
         self.sa_column_kwargs = sa_column_kwargs
+        self.sa_foreign_key_args = sa_foreign_key_args
+        self.sa_foreign_key_kwargs = sa_foreign_key_kwargs
 
 
 class RelationshipInfo(Representation):
@@ -230,6 +234,8 @@ def Field(
     sa_type: Union[Type[Any], UndefinedType] = Undefined,
     sa_column_args: Union[Sequence[Any], UndefinedType] = Undefined,
     sa_column_kwargs: Union[Mapping[str, Any], UndefinedType] = Undefined,
+    sa_foreign_key_args: Union[Sequence[Any], UndefinedType] = Undefined,
+    sa_foreign_key_kwargs: Union[Mapping[str, Any], UndefinedType] = Undefined,
     schema_extra: Optional[Dict[str, Any]] = None,
 ) -> Any:
     ...
@@ -311,6 +317,8 @@ def Field(
     sa_column: Union[Column, UndefinedType] = Undefined,  # type: ignore
     sa_column_args: Union[Sequence[Any], UndefinedType] = Undefined,
     sa_column_kwargs: Union[Mapping[str, Any], UndefinedType] = Undefined,
+    sa_foreign_key_args: Union[Sequence[Any], UndefinedType] = Undefined,
+    sa_foreign_key_kwargs: Union[Mapping[str, Any], UndefinedType] = Undefined,
     schema_extra: Optional[Dict[str, Any]] = None,
 ) -> Any:
     current_schema_extra = schema_extra or {}
@@ -348,6 +356,8 @@ def Field(
         sa_column=sa_column,
         sa_column_args=sa_column_args,
         sa_column_kwargs=sa_column_kwargs,
+        sa_foreign_key_args=sa_foreign_key_args,
+        sa_foreign_key_kwargs=sa_foreign_key_kwargs,
         **current_schema_extra,
     )
     post_init_field_info(field_info)
@@ -646,7 +656,19 @@ def get_column_from_field(field: Any) -> Column:  # type: ignore
         unique = False
     if foreign_key:
         assert isinstance(foreign_key, str)
-        args.append(ForeignKey(foreign_key))
+        sa_foreign_key_args = getattr(field_info, "sa_foreign_key_args", Undefined)
+        fk_args = (
+            []
+            if sa_foreign_key_args is Undefined
+            else list(cast(Sequence[Any], sa_foreign_key_args))
+        )
+        sa_foreign_key_kwargs = getattr(field_info, "sa_foreign_key_kwargs", Undefined)
+        fk_kwargs = (
+            {}
+            if sa_foreign_key_kwargs is Undefined
+            else cast(Dict[Any, Any], sa_foreign_key_kwargs)
+        )
+        args.append(ForeignKey(foreign_key, *fk_args, **fk_kwargs))
     kwargs = {
         "primary_key": primary_key,
         "nullable": nullable,
