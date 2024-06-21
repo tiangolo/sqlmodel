@@ -151,6 +151,10 @@ class FieldInfo(PydanticFieldInfo):
                 raise RuntimeError(
                     "Passing sa_type is not supported when also passing a sa_column"
                 )
+        if not hasattr(PydanticFieldInfo, "validation_alias"):
+            kwargs.pop("validation_alias")
+        if not hasattr(PydanticFieldInfo, "serialization_alias"):
+            kwargs.pop("serialization_alias")
         super().__init__(default=default, **kwargs)
         self.primary_key = primary_key
         self.nullable = nullable
@@ -197,6 +201,8 @@ def Field(
     *,
     default_factory: Optional[NoArgAnyCallable] = None,
     alias: Optional[str] = None,
+    validation_alias: Optional[str] = None,
+    serialization_alias: Optional[str] = None,
     title: Optional[str] = None,
     description: Optional[str] = None,
     exclude: Union[
@@ -240,6 +246,8 @@ def Field(
     *,
     default_factory: Optional[NoArgAnyCallable] = None,
     alias: Optional[str] = None,
+    validation_alias: Optional[str] = None,
+    serialization_alias: Optional[str] = None,
     title: Optional[str] = None,
     description: Optional[str] = None,
     exclude: Union[
@@ -275,6 +283,8 @@ def Field(
     *,
     default_factory: Optional[NoArgAnyCallable] = None,
     alias: Optional[str] = None,
+    validation_alias: Optional[str] = None,
+    serialization_alias: Optional[str] = None,
     title: Optional[str] = None,
     description: Optional[str] = None,
     exclude: Union[
@@ -316,6 +326,8 @@ def Field(
         default,
         default_factory=default_factory,
         alias=alias,
+        validation_alias=validation_alias,
+        serialization_alias=serialization_alias,
         title=title,
         description=description,
         exclude=exclude,
